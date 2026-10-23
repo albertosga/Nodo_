@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NODO - Comunidad de Diseño</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            nodoBlue: { DEFAULT: '#001F3F', light: '#0A2F5C', dark: '#001122' },
+            nodoOrange: { DEFAULT: '#FF851B', hover: '#E06B0B', light: '#FF9940' },
+            nodoWhite: { DEFAULT: '#FFFFFF', soft: '#F8FAFC' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #F8FAFC; transition: background 0.3s; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #FF851B; }
+    
+    .dark ::-webkit-scrollbar-track { background: #0f172a; } /* slate-900 */
+    .dark ::-webkit-scrollbar-thumb { background: #334155; } /* slate-700 */
+    .dark ::-webkit-scrollbar-thumb:hover { background: #FF851B; }
+
+    body { transition: background-color 0.3s ease, color 0.3s ease; }
+    
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    #loading-overlay {
+      position: fixed; inset: 0; background: #001F3F; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;
+      transition: opacity 0.5s;
+    }
+  </style>
+  
+  <script>
+    // Inicialización del Modo Oscuro
+    if (localStorage.getItem('nodo-theme') === 'dark' || (!('nodo-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      localStorage.setItem('nodo-theme', isDark ? 'dark' : 'light');
+      renderNav(); // Re-renderizar para actualizar el icono
+    }
+  </script>
+</head>
+<body class="text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 font-sans min-h-screen flex flex-col">
+
+  <!-- Pantalla de carga de NODO -->
+  <div id="loading-overlay">
+    <img src="logo-nodo-main-invertido.png" alt="NODO Logo" class="h-16 mb-4 animate-pulse drop-shadow-lg">
+    <p class="font-display font-bold text-xl animate-pulse text-white">Iniciando NODO...</p>
+  </div>
+
+  <!-- Sistema de Notificaciones (Toasts) -->
+  <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+  <script>
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const isDark = document.documentElement.classList.contains('dark');
+      
+      const successColor = isDark ? 'bg-emerald-900/90 text-emerald-100 border-emerald-800' : 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      const errorColor = isDark ? 'bg-rose-900/90 text-rose-100 border-rose-800' : 'bg-rose-50 text-rose-800 border-rose-200';
+      const infoColor = isDark ? 'bg-slate-800/90 text-blue-300 border-slate-700' : 'bg-nodoBlue/5 text-nodoBlue border-nodoBlue/20';
+      
+      const color = type === 'success' ? successColor : type === 'error' ? errorColor : infoColor;
+      
+      toast.className = `transform translate-y-5 opacity-0 transition-all duration-300 pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold backdrop-blur-md ${color}`;
+      toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info'}" class="w-5 h-5 flex-shrink-0"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      lucide.createIcons();
+      setTimeout(() => toast.classList.remove('translate-y-5', 'opacity-0'), 10);
+      setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+  </script>
+
+  <!-- HEADER -->
+  <header id="main-nav" class="bg-nodoWhite dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 hidden shadow-sm transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center gap-6">
+          <div class="flex items-center gap-3 cursor-pointer group" onclick="navigate('feed')">
+            <img src="logo-nodo-main-invertido.png" alt="NODO" class="h-8 md:h-10 group-hover:scale-105 transition-transform">
+          </div>
+          <nav class="hidden md:flex gap-2 ml-4" id="nav-links"></nav>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-4">
+          <button onclick="toggleTheme()" class="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-nodoOrange dark:hover:text-nodoOrange rounded-full transition-colors" title="Cambiar Tema" id="theme-btn">
+             <!-- Icono inyectado vía renderNav -->
+          </button>
+          <div class="flex items-center gap-3 cursor-pointer p-1.5 pr-3 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all" id="user-menu" onclick="navigate('profile')"></div>
+          <button onclick="logout()" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors p-2 bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full" title="Cerrar Sesión"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="md:hidden flex justify-around border-t border-slate-100 dark:border-slate-800 bg-nodoWhite dark:bg-slate-900 py-2 shadow-inner transition-colors duration-300" id="mobile-nav"></div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <main id="app-container" class="flex-grow w-full"></main>
+
+  <script>
+    // Oculta la pantalla inicial tanto si la app inicia correctamente como si falla.
+    function hideLoader() {
+      const loader = document.getElementById('loading-overlay');
+      if (!loader) return;
+      loader.style.opacity = '0';
+      loader.style.pointerEvents = 'none';
+      window.setTimeout(() => loader.remove(), 550);
+    }
+
+    // NODO funciona sin Firebase: los datos se guardan en IndexedDB del navegador.
+    window.DB = { users: [], projects: [], activeChallenge: null, messages: [] };
+    window.state = {
+      currentUser: null, currentView: 'auth', viewingProfileId: null,
+      selectedCategories: new Set(), modalProject: null, tempUploadImgUrl: null
+    };
+    window.db = { local: true }; // Compatibilidad con funciones existentes
+    const NODO_DB_NAME = 'nodo-local-db';
+    const NODO_DB_STORE = 'app';
+    let nodoDbPromise;
+
+    function openNodoDB() {
+      if (nodoDbPromise) return nodoDbPromise;
+      nodoDbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(NODO_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains(NODO_DB_STORE))
+            request.result.createObjectStore(NODO_DB_STORE);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      return nodoDbPromise;
+    }
+    async function localRead() {
+      const db = await openNodoDB();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction(NODO_DB_STORE, 'readonly').objectStore(NODO_DB_STORE).get('data');
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function localWrite() {
+      const db = await openNodoDB();
+      const snapshot = {
+        users: window.DB.users, projects: window.DB.projects,
+        activeChallenge: window.DB.activeChallenge, messages: window.DB.messages
+      };
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(NODO_DB_STORE, 'readwrite');
+        tx.objectStore(NODO_DB_STORE).put(snapshot, 'data');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    window.getDocRef = (collection, id) => ({ collection, id });
+    window.setDoc = async (ref, value) => {
+      const data = JSON.parse(JSON.stringify(value));
+      if (ref.collection === 'challenges') window.DB.activeChallenge = data;
+      else {
+        const list = window.DB[ref.collection] || (window.DB[ref.collection] = []);
+        const index = list.findIndex(item => item.id === ref.id);
+        if (index >= 0) list[index] = data; else list.push(data);
+      }
+      await localWrite();
+      window.renderView?.();
+    };
+    window.updateDoc = async (ref, patch) => {
+      if (ref.collection === 'challenges') {
+        if (!window.DB.activeChallenge || window.DB.activeChallenge.id !== ref.id)
+          throw new Error('Reto no encontrado');
+        Object.assign(window.DB.activeChallenge, patch);
+      } else {
+        const item = (window.DB[ref.collection] || []).find(x => x.id === ref.id);
+        if (!item) throw new Error('Registro no encontrado');
+        Object.assign(item, JSON.parse(JSON.stringify(patch)));
+      }
+      await localWrite();
+      window.renderView?.();
+    };
+
+    async function initApp() {
+      try {
+        const saved = await localRead();
+        if (saved) {
+          window.DB.users = saved.users || [];
+          window.DB.projects = saved.projects || [];
+          window.DB.activeChallenge = saved.activeChallenge || null;
+          window.DB.messages = saved.messages || [];
+        } else {
+          window.DB.users = [
+            { id:'u1', role:'alumno', name:'Sofia Reyes', email:'sofia@nodo.com', password:'123',
+              avatar:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+              carrera:'Diseño Multimedia', specialty:'Animación 3D', stars:12 },
+            { id:'u2', role:'profesor', name:'Dr. Roberto L.', email:'roberto@nodo.com', password:'123',
+              avatar:'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80',
+              specialty:'Dirección de Arte' },
+            { id:'admin-1', role:'admin', name:'NODO Staff', email:'admin@nodo.com', password:'123',
+              avatar:'https://ui-avatars.com/api/?name=Staff&background=FF851B&color=fff', specialty:'Admin' }
+          ];
+          window.DB.projects = [{
+            id:'p1', studentId:'u1', title:'Exploración Cyberpunk', category:'3D',
+            likes:['u2'], comments:[{userId:'u2',text:'Excelente manejo de luces, sigue así.',date:'Hace 2h'}],
+            updates:[{id:'up1',img:'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=600&q=80',
+              desc:'Bloqueo inicial de la escena en Blender.',date:'Hace 3 días'}]
+          }];
+          window.DB.activeChallenge = { id:'c1', title:'Reto Semanal: UI Futurista', category:'UI/UX',
+            desc:'Diseña la interfaz de un reloj inteligente para astronautas. Gana 10 estrellas.', submissions:[] };
+          window.DB.messages = [];
+          await localWrite();
+        }
+        window.renderView();
+      } catch (error) {
+        console.error('No se pudo iniciar el almacenamiento local:', error);
+        showToast('No se pudo iniciar el almacenamiento local del navegador.', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+    initApp();
+  </script>
+
+  <script>
+    let isSignup = false;
+    let authRole = 'alumno'; 
+
+    function createAuthView() {
+      document.getElementById('main-nav').classList.add('hidden');
+      const div = document.createElement('div');
+      div.className = "flex flex-col md:flex-row min-h-screen bg-nodoWhite dark:bg-slate-900 transition-colors duration-300";
+      
+      const title = isSignup ? "Crea tu cuenta en NODO" : "Bienvenido a NODO";
+      const subtitle = isSignup ? "Únete a la comunidad de diseño multimedia." : "Ingresa para continuar creando.";
+      const switchText = isSignup ? "¿Ya tienes cuenta? <a href='#' onclick='toggleAuthMode()' class='text-nodoOrange font-bold hover:underline'>Inicia Sesión</a>" : "¿No tienes cuenta? <a href='#' onclick='toggleAuthMode()' class='text-nodoOrange font-bold hover:underline'>Regístrate</a>";
+      const btnText = isSignup ? "Registrarme" : "Ingresar";
+
+      let extraFields = '';
+      if (isSignup) {
+        extraFields += `
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Nombre Completo</label>
+            <input type="text" id="auth-name" required class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange focus:bg-white dark:focus:bg-slate-900 outline-none transition-all" placeholder="Ej. Ana García">
+          </div>
+        `;
+        if (authRole === 'alumno') {
+          extraFields += `
+            <div class="flex flex-col gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Carrera</label>
+                <input type="text" id="auth-carrera" required class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange focus:bg-white dark:focus:bg-slate-900 outline-none transition-all" placeholder="Ej. Diseño Multimedia">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Especialidades (separadas por coma)</label>
+                <input type="text" id="auth-student-specialty" required class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange focus:bg-white dark:focus:bg-slate-900 outline-none transition-all" placeholder="Ej. 3D, Animación, UI/UX">
+              </div>
+            </div>
+          `;
+        } else if (authRole === 'profesor') {
+          extraFields += `
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Área de Especialidad (Profesor)</label>
+              <input type="text" id="auth-prof-specialty" required class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange focus:bg-white dark:focus:bg-slate-900 outline-none transition-all" placeholder="Ej. Animación Digital y 3D">
+            </div>
+          `;
+        } else if (authRole === 'admin') {
+          extraFields += `
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Código de Autorización</label>
+              <input type="password" id="auth-admin-code" required class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange focus:bg-white dark:focus:bg-slate-900 outline-none transition-all" placeholder="Código secreto del Staff">
+            </div>
+          `;
+        }
+      }
+
+      div.innerHTML = `
+        <div class="hidden md:flex w-1/2 bg-nodoBlue text-white p-12 flex-col justify-between relative overflow-hidden">
+          <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-nodoOrange via-nodoBlue to-nodoBlue"></div>
+          <div class="relative z-10">
+            <img src="logo-nodo-main-invertido.png" alt="NODO Logo" class="h-16 mb-6 drop-shadow-lg">
+            <h1 class="text-5xl font-display font-bold leading-tight mb-4">Diseño iterativo.<br>Comunidad real.</h1>
+            <p class="text-slate-300 text-lg max-w-md">Conecta, iterá tus proyectos en carpetas de progreso y participa en retos semanales.</p>
+          </div>
+          <div class="relative z-10 text-sm text-slate-400 font-medium flex items-center gap-4">
+             © 2026 NODO Platform.
+             <button onclick="toggleTheme()" class="flex items-center gap-2 hover:text-white transition-colors"><i data-lucide="moon" class="w-4 h-4"></i> Tema</button>
+          </div>
+        </div>
+
+        <div class="w-full md:w-1/2 flex items-center justify-center p-8 bg-nodoWhite dark:bg-slate-900 transition-colors duration-300">
+          <div class="w-full max-w-md fade-in">
+            <img src="logo-nodo-main-invertido.png" alt="NODO Logo" class="md:hidden h-12 mb-8 mx-auto drop-shadow-md">
+
+            <div class="mb-8 text-center md:text-left">
+              <h2 class="text-3xl font-display font-bold text-nodoBlue dark:text-white mb-2 transition-colors">${title}</h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">${subtitle}</p>
+            </div>
+
+            <div class="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl mb-6 transition-colors gap-1">
+              <button type="button" onclick="switchAuthRole('alumno')" class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${authRole === 'alumno' ? 'bg-white dark:bg-slate-700 shadow-sm text-nodoBlue dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}">Alumno</button>
+              <button type="button" onclick="switchAuthRole('profesor')" class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${authRole === 'profesor' ? 'bg-white dark:bg-slate-700 shadow-sm text-nodoBlue dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}">Profesor</button>
+              <button type="button" onclick="switchAuthRole('admin')" class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${authRole === 'admin' ? 'bg-white dark:bg-slate-700 shadow-sm text-nodoBlue dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}">Staff</button>
+            </div>
+
+            <form onsubmit="handleAuth(event)" class="space-y-4">
+              ${extraFields}
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Correo Electrónico</label>
+                <input type="email" id="auth-email" required class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange focus:bg-white dark:focus:bg-slate-900 outline-none transition-all" placeholder="ejemplo@universidad.edu">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Contraseña</label>
+                <input type="password" id="auth-pass" required class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange focus:bg-white dark:focus:bg-slate-900 outline-none transition-all" placeholder="••••••••">
+              </div>
+              
+              <button type="submit" class="w-full bg-nodoBlue hover:bg-nodoBlue-light dark:bg-nodoOrange dark:hover:bg-nodoOrange-hover text-white font-display font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl mt-4 flex items-center justify-center gap-2">
+                ${btnText} <i data-lucide="arrow-right" class="w-5 h-5"></i>
+              </button>
+            </form>
+
+            <div class="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
+              ${switchText}
+            </div>
+            
+            ${!isSignup ? `
+              <div class="mt-6 p-4 bg-blue-50 dark:bg-slate-800 rounded-xl border border-blue-100 dark:border-slate-700 text-xs text-blue-800 dark:text-blue-300 text-left transition-colors">
+                <p class="font-bold mb-1">Cuentas Demostrativas:</p>
+                <p>Alumno: sofia@nodo.com / 123</p>
+                <p>Profesor: roberto@nodo.com / 123</p>
+                <p>Admin: admin@nodo.com / 123</p>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      return div;
+    }
+
+    function toggleAuthMode() {
+      isSignup = !isSignup;
+      renderView();
+    }
+
+    function switchAuthRole(role) {
+      authRole = role;
+      renderView();
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const pass = document.getElementById('auth-pass').value;
+
+      try {
+        if (isSignup) {
+          const name = document.getElementById('auth-name').value;
+          const newUserId = 'u' + Date.now();
+          const newUser = {
+            id: newUserId, role: authRole, name: name, email: email, password: pass,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=001F3F&color=fff`
+          };
+
+          if (authRole === 'alumno') {
+            newUser.carrera = document.getElementById('auth-carrera').value;
+            newUser.specialty = document.getElementById('auth-student-specialty').value || 'Diseño Multimedia';
+            newUser.stars = 0;
+          } else if (authRole === 'profesor') {
+            newUser.specialty = document.getElementById('auth-prof-specialty').value;
+          } else if (authRole === 'admin') {
+            const secretCode = document.getElementById('auth-admin-code').value;
+            if (secretCode !== 'NODO2026') {
+              return showToast('Código de autorización incorrecto.', 'error');
+            }
+            newUser.specialty = 'Administrador de NODO';
+          }
+
+          await window.setDoc(window.getDocRef('users', newUserId), newUser);
+          state.currentUser = newUser;
+          showToast('Cuenta creada exitosamente. ¡Bienvenido!');
+        } else {
+          const user = window.DB.users.find(u => u.email === email && u.password === pass);
+          if (user) {
+            state.currentUser = user;
+            showToast(`¡Bienvenido de nuevo, ${user.name}!`);
+          } else {
+            return showToast('Correo o contraseña incorrectos.', 'error');
+          }
+        }
+        navigate('feed');
+      } catch (err) {
+        console.error(err);
+        showToast('Error al guardar los datos', 'error');
+      }
+    }
+
+    function logout() {
+      state.currentUser = null;
+      state.currentView = 'auth';
+      renderView();
+    }
+  </script>
+
+  <script>
+    function toggleFilter(category) {
+      if (state.selectedCategories.has(category)) state.selectedCategories.delete(category);
+      else state.selectedCategories.add(category);
+      renderView();
+    }
+
+    function createFeedView() {
+      const div = document.createElement('div');
+      div.className = "max-w-7xl mx-auto px-4 py-8 fade-in";
+      
+      let html = `
+        <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2 class="text-3xl font-display font-bold text-nodoBlue dark:text-white mb-2 transition-colors">Explorar Portafolios</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Descubre y retroalimenta las carpetas de trabajo de la comunidad.</p>
+          </div>
+          ${state.currentUser.role === 'alumno' ? `
+            <button onclick="openUploadModal()" class="bg-nodoOrange hover:bg-nodoOrange-hover text-white px-5 py-3 rounded-xl text-sm font-bold transition-all shadow-md flex items-center gap-2">
+              <i data-lucide="folder-plus" class="w-4 h-4"></i> Nueva Iteración
+            </button>
+          ` : ''}
+        </div>
+      `;
+
+      const categories = ['3D', 'Animación', 'Dibujo', 'UI/UX'];
+      html += `<div class="flex flex-wrap items-center gap-2 mb-8">
+        <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-2"><i data-lucide="filter" class="w-4 h-4 inline mb-0.5"></i> Disciplinas:</span>`;
+      
+      categories.forEach(cat => {
+        const isActive = state.selectedCategories.has(cat);
+        html += `
+          <button onclick="toggleFilter('${cat}')" class="px-4 py-2 rounded-full text-sm font-bold transition-all border ${isActive ? 'bg-nodoBlue dark:bg-nodoOrange text-white border-nodoBlue dark:border-nodoOrange shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-nodoBlue dark:hover:border-nodoOrange'}">
+            ${cat}
+          </button>
+        `;
+      });
+      html += `</div>`;
+
+      const filteredProjects = state.selectedCategories.size === 0 
+        ? window.DB.projects 
+        : window.DB.projects.filter(p => state.selectedCategories.has(p.category));
+
+      html += `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">`;
+      
+      if (filteredProjects.length === 0) {
+        html += `<div class="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 transition-colors">
+          <i data-lucide="folder-search" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+          <p class="font-medium">No hay carpetas en estas categorías.</p>
+        </div>`;
+      } else {
+        filteredProjects.forEach(p => {
+          const author = window.DB.users.find(u => u.id === p.studentId) || { name: 'Desconocido', avatar: '' };
+          const latestUpdate = p.updates[p.updates.length - 1];
+          const isLiked = p.likes.includes(state.currentUser.id);
+
+          html += `
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col">
+              <div class="relative h-56 bg-slate-100 dark:bg-slate-700 overflow-hidden cursor-pointer" onclick="openProjectModal('${p.id}')">
+                <img src="${latestUpdate.img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=Error'">
+                <div class="absolute inset-0 bg-gradient-to-t from-nodoBlue/90 dark:from-slate-900/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span class="absolute top-3 left-3 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-nodoBlue dark:text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-sm">${p.category}</span>
+                <span class="absolute top-3 right-3 bg-nodoBlue/90 dark:bg-nodoOrange/90 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="layers" class="w-3 h-3"></i> ${p.updates.length}
+                </span>
+              </div>
+              <div class="p-5 flex-grow flex flex-col justify-between">
+                <div>
+                  <h3 class="font-display font-bold text-lg text-nodoBlue dark:text-white leading-tight cursor-pointer hover:text-nodoOrange dark:hover:text-nodoOrange transition-colors" onclick="openProjectModal('${p.id}')">${p.title}</h3>
+                  <div class="flex items-center gap-2 mt-3 cursor-pointer group/author" onclick="navigate('profile', '${author.id}')">
+                    <img src="${author.avatar}" class="w-6 h-6 rounded-full border border-slate-200 dark:border-slate-600">
+                    <span class="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover/author:text-nodoBlue dark:group-hover/author:text-white transition-colors">${author.name}</span>
+                  </div>
+                </div>
+                <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                  <button onclick="toggleLike('${p.id}')" class="flex items-center gap-1.5 text-sm font-bold ${isLiked ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400'} transition-colors">
+                    <i data-lucide="heart" class="w-5 h-5 ${isLiked ? 'fill-rose-500 dark:fill-rose-400' : ''}"></i> ${p.likes.length}
+                  </button>
+                  <button onclick="openProjectModal('${p.id}')" class="flex items-center gap-1.5 text-sm font-bold text-slate-400 dark:text-slate-500 hover:text-nodoBlue dark:hover:text-white transition-colors">
+                    <i data-lucide="message-square" class="w-5 h-5"></i> ${p.comments.length}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+      html += `</div>`;
+      div.innerHTML = html;
+      return div;
+    }
+
+    async function toggleLike(projectId) {
+      if (!window.db) return; 
+      const proj = window.DB.projects.find(p => p.id === projectId);
+      if (!proj) return;
+      
+      const newLikes = [...proj.likes];
+      const idx = newLikes.indexOf(state.currentUser.id);
+      if (idx > -1) newLikes.splice(idx, 1);
+      else newLikes.push(state.currentUser.id);
+      
+      try {
+        await window.updateDoc(window.getDocRef('projects', projectId), { likes: newLikes });
+      } catch (err) {
+        showToast('Error al dar like', 'error');
+      }
+    }
+  </script>
+
+  <!-- Project Detail Modal -->
+  <div id="project-modal" class="fixed inset-0 z-50 bg-nodoBlue/40 dark:bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-5xl h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl relative fade-in transition-colors">
+      <button onclick="closeProjectModal()" class="absolute top-4 right-4 z-10 bg-white/80 dark:bg-slate-700/80 backdrop-blur-md p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/50 hover:text-rose-500 dark:hover:text-rose-400 transition-colors shadow-sm"><i data-lucide="x" class="w-5 h-5"></i></button>
+      
+      <div class="w-full md:w-3/5 bg-slate-50 dark:bg-slate-900/50 overflow-y-auto p-6 md:p-8" id="modal-project-visuals"></div>
+      
+      <div class="w-full md:w-2/5 flex flex-col border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 h-full transition-colors">
+        <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex-grow overflow-y-auto" id="modal-project-details"></div>
+        
+        <div class="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 transition-colors">
+          <div class="flex gap-2 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:border-nodoBlue dark:focus-within:border-nodoOrange transition-all">
+            <input type="text" id="comment-input" placeholder="Añade un comentario..." class="flex-grow bg-transparent px-3 py-2 text-sm focus:outline-none font-medium text-slate-900 dark:text-white">
+            <button onclick="submitComment()" class="bg-nodoBlue dark:bg-nodoOrange hover:bg-nodoBlue-light dark:hover:bg-nodoOrange-hover text-white p-2 rounded-xl transition-colors"><i data-lucide="send" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openProjectModal(projectId) {
+      state.modalProject = window.DB.projects.find(p => p.id === projectId);
+      document.getElementById('project-modal').classList.remove('hidden');
+      renderProjectModalContent();
+    }
+
+    function closeProjectModal() {
+      document.getElementById('project-modal').classList.add('hidden');
+      state.modalProject = null;
+    }
+
+    function renderProjectModalContent() {
+      if (!state.modalProject) return;
+      const p = state.modalProject;
+      const author = window.DB.users.find(u => u.id === p.studentId) || { name: 'Desconocido', avatar: '' };
+      const isLiked = p.likes.includes(state.currentUser.id);
+
+      const visualsDiv = document.getElementById('modal-project-visuals');
+      visualsDiv.innerHTML = `
+        <div class="space-y-12">
+          ${p.updates.map((up, idx, arr) => `
+            <div class="relative">
+              ${idx < arr.length - 1 ? '<div class="absolute top-10 bottom-[-3rem] left-5 w-0.5 bg-slate-200 dark:bg-slate-700 z-0"></div>' : ''}
+              <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-full bg-nodoBlue dark:bg-nodoOrange text-white flex items-center justify-center font-bold text-sm shadow-md border-4 border-slate-50 dark:border-slate-800">v${idx + 1}</div>
+                  <div>
+                    <span class="text-sm font-bold text-nodoBlue dark:text-white block">Iteración ${idx + 1}</span>
+                    <span class="text-xs font-medium text-slate-400 dark:text-slate-500">${up.date}</span>
+                  </div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 ml-5 transition-colors">
+                  <img src="${up.img}" class="w-full rounded-xl mb-4 bg-slate-100 dark:bg-slate-900" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=Error'">
+                  <p class="text-sm text-slate-700 dark:text-slate-300 px-2 pb-2 font-medium leading-relaxed">${up.desc}</p>
+                </div>
+              </div>
+            </div>
+          `).reverse().join('')}
+        </div>
+      `;
+
+      const detailsDiv = document.getElementById('modal-project-details');
+      let commentsHTML = p.comments.map(c => {
+        const cUser = window.DB.users.find(u => u.id === c.userId) || { name: 'Usuario', avatar: '', role: 'alumno' };
+        const isProf = cUser.role === 'profesor';
+        return `
+          <div class="flex gap-3 mb-5">
+            <img src="${cUser.avatar}" class="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 mt-1">
+            <div class="flex-grow">
+              <div class="flex items-baseline gap-2 mb-1">
+                <span class="text-sm font-bold text-nodoBlue dark:text-white">${cUser.name}</span>
+                ${isProf ? `<span class="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[9px] font-black uppercase px-1.5 py-0.5 rounded">Profesor</span>` : ''}
+                <span class="text-xs text-slate-400 dark:text-slate-500 ml-auto">${c.date}</span>
+              </div>
+              <p class="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl rounded-tl-none border border-slate-100 dark:border-slate-700">${c.text}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (p.comments.length === 0) commentsHTML = `
+        <div class="text-center py-8">
+          <i data-lucide="message-square-dashed" class="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2"></i>
+          <p class="text-sm text-slate-400 dark:text-slate-500 font-medium">Sé el primero en dar feedback.</p>
+        </div>
+      `;
+
+      detailsDiv.innerHTML = `
+        <div class="mb-6">
+          <span class="text-[10px] font-black uppercase tracking-widest text-nodoOrange mb-2 block">${p.category}</span>
+          <h2 class="text-2xl font-display font-bold text-nodoBlue dark:text-white leading-tight mb-6">${p.title}</h2>
+          
+          <div class="flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 mb-6 cursor-pointer hover:shadow-md transition-shadow group" onclick="closeProjectModal(); navigate('profile', '${author.id}')">
+            <div class="flex items-center gap-3">
+              <img src="${author.avatar}" class="w-12 h-12 rounded-full border-2 border-slate-100 dark:border-slate-700">
+              <div>
+                <p class="text-sm font-bold text-nodoBlue dark:text-white group-hover:text-nodoOrange dark:group-hover:text-nodoOrange transition-colors">${author.name}</p>
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">${author.carrera || author.specialty}</p>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-nodoOrange transition-colors"></i>
+          </div>
+
+          <div class="flex items-center gap-4 mb-8">
+            <button onclick="toggleLike('${p.id}')" class="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl text-sm font-bold ${isLiked ? 'text-rose-500 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'} border transition-all">
+              <i data-lucide="heart" class="w-5 h-5 ${isLiked ? 'fill-rose-500 dark:fill-rose-400' : ''}"></i> ${p.likes.length} Likes
+            </button>
+          </div>
+
+          <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wide">Comentarios (${p.comments.length})</h3>
+          <div>${commentsHTML}</div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    async function submitComment() {
+      const input = document.getElementById('comment-input');
+      const text = input.value.trim();
+      if (!text || !state.modalProject || !window.db) return;
+
+      const p = window.DB.projects.find(x => x.id === state.modalProject.id);
+      const newComments = [...p.comments, { userId: state.currentUser.id, text: text, date: 'Justo ahora' }];
+
+      try {
+        await window.updateDoc(window.getDocRef('projects', p.id), { comments: newComments });
+        input.value = '';
+      } catch (e) {
+        showToast('Error al enviar comentario', 'error');
+      }
+    }
+  </script>
+
+  <!-- Upload Modal -->
+  <div id="upload-modal" class="fixed inset-0 z-50 bg-nodoBlue/40 dark:bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl relative flex flex-col fade-in max-h-[90vh] transition-colors">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded-t-3xl transition-colors">
+        <h3 class="text-xl font-display font-bold text-nodoBlue dark:text-white" id="upload-modal-title">Subir Iteración</h3>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
+      </div>
+      
+      <div class="p-6 space-y-5 overflow-y-auto">
+        <div id="upload-project-selector" class="hidden">
+          <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Añadir a Carpeta</label>
+          <select id="upload-proj-id" class="w-full border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-900 text-nodoBlue dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange outline-none font-medium"></select>
+        </div>
+        
+        <div id="upload-new-project-fields" class="hidden space-y-5 p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Título del Nuevo Proyecto</label>
+            <input type="text" id="upload-new-title" class="w-full border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Disciplina</label>
+            <select id="upload-new-cat" class="w-full border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange outline-none">
+              <option value="3D">3D</option><option value="Animación">Animación</option><option value="Dibujo">Dibujo</option><option value="UI/UX">UI/UX</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Subir Imagen de tu Equipo</label>
+          <input type="file" id="file-upload-local" accept="image/*" onchange="handleLocalFile(event)" class="w-full mb-3 text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-nodoBlue/10 file:text-nodoBlue dark:file:bg-nodoOrange/20 dark:file:text-nodoOrange hover:file:bg-nodoBlue/20 dark:hover:file:bg-nodoOrange/30 transition-all cursor-pointer">
+
+          <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Opcional: URL Externa</label>
+          <input type="url" id="file-upload-url" placeholder="https://..." oninput="handleUrlInput(event)" class="w-full border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-900 text-nodoBlue dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange outline-none mb-4 font-medium">
+          
+          <div id="file-preview-container" class="hidden border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-2 bg-slate-50 dark:bg-slate-900/50">
+            <img id="file-preview-img" src="" class="max-h-48 mx-auto rounded-lg shadow-sm" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=Error'">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Notas de Progreso</label>
+          <textarea id="upload-desc" rows="3" class="w-full border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-nodoBlue dark:focus:border-nodoOrange outline-none resize-none font-medium" placeholder="Describe los cambios..."></textarea>
+        </div>
+        
+        <button onclick="submitUpload()" class="w-full bg-nodoOrange hover:bg-nodoOrange-hover text-white font-bold py-4 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2">
+          <i data-lucide="cloud-upload" class="w-5 h-5"></i> Guardar en NODO
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isUploadingToChallenge = false;
+
+    function openUploadModal(forChallenge = false) {
+      if (state.currentUser.role !== 'alumno') return showToast('Solo los alumnos pueden subir proyectos.', 'error');
+      
+      isUploadingToChallenge = forChallenge;
+      state.tempUploadImgUrl = null;
+      document.getElementById('upload-modal').classList.remove('hidden');
+      
+      document.getElementById('file-preview-container').classList.add('hidden');
+      document.getElementById('file-preview-img').src = '';
+      
+      // Limpieza segura de inputs para evitar errores "null"
+      const urlInput = document.getElementById('file-upload-url');
+      if(urlInput) urlInput.value = '';
+      const localInput = document.getElementById('file-upload-local');
+      if(localInput) localInput.value = '';
+      
+      document.getElementById('upload-desc').value = '';
+      
+      const titleEl = document.getElementById('upload-modal-title');
+      const projSelectWrap = document.getElementById('upload-project-selector');
+      const newProjWrap = document.getElementById('upload-new-project-fields');
+      const selectEl = document.getElementById('upload-proj-id');
+
+      if (forChallenge) {
+        titleEl.textContent = 'Subir al Reto Semanal';
+        projSelectWrap.classList.add('hidden');
+        newProjWrap.classList.add('hidden'); 
+      } else {
+        titleEl.textContent = 'Añadir Iteración a Portafolio';
+        const userProjects = window.DB.projects.filter(p => p.studentId === state.currentUser.id);
+        
+        if (userProjects.length > 0) {
+          projSelectWrap.classList.remove('hidden');
+          selectEl.innerHTML = `<option value="new" class="font-bold text-nodoOrange">+ CREAR NUEVA CARPETA</option>` + 
+            userProjects.map(p => `<option value="${p.id}">📁 ${p.title} (${p.category})</option>`).join('');
+          
+          selectEl.onchange = (e) => {
+            if(e.target.value === 'new') newProjWrap.classList.remove('hidden');
+            else newProjWrap.classList.add('hidden');
+          };
+          selectEl.value = userProjects[0].id;
+          newProjWrap.classList.add('hidden');
+        } else {
+          projSelectWrap.classList.add('hidden');
+          newProjWrap.classList.remove('hidden');
+          selectEl.innerHTML = `<option value="new">Nuevo</option>`;
+        }
+      }
+    }
+
+    function closeUploadModal() { document.getElementById('upload-modal').classList.add('hidden'); }
+
+    function handleLocalFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          // Comprimir la imagen para no saturar la BD
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; const MAX_HEIGHT = 800;
+          let width = img.width; let height = img.height;
+
+          if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
+          else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+          
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          state.tempUploadImgUrl = dataUrl;
+          
+          const previewContainer = document.getElementById('file-preview-container');
+          previewContainer.classList.remove('hidden');
+          document.getElementById('file-preview-img').src = dataUrl;
+          
+          const urlInput = document.getElementById('file-upload-url');
+          if(urlInput) urlInput.value = ''; // Limpiar la URL si se sube archivo
+        }
+        img.src = e.target.result;
+      }
+      reader.readAsDataURL(file);
+    }
+
+    function handleUrlInput(event) {
+      const url = event.target.value;
+      const previewContainer = document.getElementById('file-preview-container');
+      if (url && url.length > 5) {
+        state.tempUploadImgUrl = url;
+        previewContainer.classList.remove('hidden');
+        document.getElementById('file-preview-img').src = url;
+        
+        const localInput = document.getElementById('file-upload-local');
+        if(localInput) localInput.value = ''; // Limpiar input de archivo local
+      } else {
+        state.tempUploadImgUrl = null;
+        previewContainer.classList.add('hidden');
+      }
+    }
+
+    async function submitUpload() {
+      if (!window.db) return;
+      const img = state.tempUploadImgUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80';
+      const desc = document.getElementById('upload-desc').value;
+
+      try {
+        if (isUploadingToChallenge) {
+          const c = window.DB.activeChallenge;
+          const newSubmissions = [...c.submissions, { id: 'sub' + Date.now(), studentId: state.currentUser.id, img: img, votes: [] }];
+          await window.updateDoc(window.getDocRef('challenges', c.id), { submissions: newSubmissions });
+          showToast('Participación registrada exitosamente.');
+          closeUploadModal();
+          return;
+        }
+
+        const projId = document.getElementById('upload-proj-id').value;
+        const newUpdate = { id: 'up'+Date.now(), img: img, desc: desc || 'Iteración sin descripción', date: 'Justo ahora' };
+
+        if (projId === 'new' || !document.getElementById('upload-project-selector').classList.contains('hidden') === false) {
+          const newProject = {
+            id: 'p' + Date.now(), studentId: state.currentUser.id,
+            title: document.getElementById('upload-new-title').value || 'Sin Título',
+            category: document.getElementById('upload-new-cat').value,
+            likes: [], comments: [], updates: [newUpdate]
+          };
+          await window.setDoc(window.getDocRef('projects', newProject.id), newProject);
+        } else {
+          const p = window.DB.projects.find(x => x.id === projId);
+          await window.updateDoc(window.getDocRef('projects', p.id), { updates: [...p.updates, newUpdate] });
+        }
+        showToast('Progreso guardado en este dispositivo.');
+        closeUploadModal();
+      } catch (err) {
+        showToast('Error al publicar', 'error');
+      }
+    }
+  </script>
+
+  <script>
+    function createRetosView() {
+      const div = document.createElement('div');
+      div.className = "max-w-7xl mx-auto px-4 py-8 fade-in";
+      
+      const c = window.DB.activeChallenge;
+      if (!c) { div.innerHTML = "<p>Cargando reto...</p>"; return div; }
+
+      const isAlumno = state.currentUser.role === 'alumno';
+      const hasSubmitted = c.submissions.some(s => s.studentId === state.currentUser.id);
+      let hasVoted = false;
+      c.submissions.forEach(s => { if(s.votes.includes(state.currentUser.id)) hasVoted = true; });
+
+      let headerAction = '';
+      if (isAlumno) {
+        if (hasSubmitted) headerAction = `<span class="bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md flex items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> Ya estás participando</span>`;
+        else headerAction = `<button onclick="openUploadModal(true)" class="bg-nodoOrange hover:bg-nodoOrange-hover text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"><i data-lucide="swords" class="w-5 h-5"></i> Unirse al Reto</button>`;
+      }
+
+      let gridHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">`;
+      if (c.submissions.length === 0) {
+        gridHTML += `<div class="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 text-slate-400 transition-colors">
+          <i data-lucide="trophy" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+          <p class="font-medium">El escenario está vacío. ¡Sé el primero en participar!</p>
+        </div>`;
+      } else {
+        c.submissions.forEach(s => {
+          const author = window.DB.users.find(u => u.id === s.studentId) || { name: 'Anónimo', avatar: '' };
+          const isOwn = s.studentId === state.currentUser.id;
+          const userVotedForThis = s.votes.includes(state.currentUser.id);
+          
+          let voteBtnClass = "bg-white dark:bg-slate-700 border-2 border-nodoBlue dark:border-nodoOrange text-nodoBlue dark:text-nodoWhite hover:bg-nodoBlue dark:hover:bg-nodoOrange hover:text-white";
+          let voteBtnText = "Votar";
+          let disabled = false;
+
+          if (isOwn) {
+            voteBtnClass = "bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed";
+            voteBtnText = "Tu participación"; disabled = true;
+          } else if (userVotedForThis) {
+            voteBtnClass = "bg-nodoOrange border-2 border-nodoOrange text-white";
+            voteBtnText = "Votado <i data-lucide='check' class='w-4 h-4 inline'></i>";
+          } else if (hasVoted) {
+            voteBtnClass = "bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed";
+            voteBtnText = "Voto Emitido"; disabled = true;
+          }
+
+          gridHTML += `
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 flex flex-col shadow-sm hover:shadow-xl transition-shadow relative overflow-hidden group">
+              ${userVotedForThis ? `<div class="absolute top-0 right-0 w-16 h-16 bg-nodoOrange flex items-start justify-end p-2 rounded-bl-full z-10"><i data-lucide="star" class="w-5 h-5 text-white fill-white"></i></div>` : ''}
+              <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="navigate('profile', '${author.id}')">
+                <img src="${author.avatar}" class="w-10 h-10 rounded-full border-2 border-slate-100 dark:border-slate-700 group-hover:border-nodoOrange transition-colors">
+                <div>
+                  <span class="text-sm font-bold text-nodoBlue dark:text-white block">${author.name}</span>
+                  <span class="text-[10px] uppercase font-bold text-slate-400">${author.carrera || author.specialty}</span>
+                </div>
+              </div>
+              <div class="rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-900 h-56 mb-5 relative">
+                <img src="${s.img}" class="w-full h-full object-cover">
+              </div>
+              <div class="flex justify-between items-center mt-auto">
+                <div class="flex flex-col">
+                  <span class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Apoyos</span>
+                  <span class="text-lg font-black text-nodoBlue dark:text-white flex items-center gap-1.5"><i data-lucide="zap" class="w-5 h-5 text-nodoOrange fill-nodoOrange"></i> ${s.votes.length}</span>
+                </div>
+                <button onclick="voteChallenge('${s.id}')" ${disabled ? 'disabled' : ''} class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${voteBtnClass}">${voteBtnText}</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+      gridHTML += `</div>`;
+
+      div.innerHTML = `
+        <div class="bg-nodoBlue dark:bg-slate-800 text-white rounded-[2rem] p-8 md:p-12 relative overflow-hidden shadow-2xl mb-12 border border-transparent dark:border-slate-700 transition-colors">
+          <div class="absolute right-0 top-0 w-[500px] h-[500px] bg-nodoOrange/20 rounded-full blur-[80px] translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+          <div class="relative z-10 max-w-3xl">
+            <div class="flex items-center gap-3 mb-6">
+              <span class="bg-nodoOrange text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm">GAMIFICACIÓN</span>
+              <span class="border border-white/20 px-3 py-1 rounded-lg text-xs font-bold text-white/80">${c.category}</span>
+            </div>
+            <h2 class="text-4xl md:text-5xl font-display font-black mb-4 leading-tight">${c.title}</h2>
+            <p class="text-slate-300 dark:text-slate-400 text-lg mb-8 font-medium leading-relaxed">${c.desc}</p>
+            <div class="flex flex-wrap items-center gap-4">
+              ${headerAction}
+              ${hasVoted ? `<div class="bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20 text-sm font-medium text-white flex items-center gap-2"><i data-lucide="info" class="w-5 h-5 text-nodoOrange"></i> Ya has emitido tu voto único para este reto.</div>` : ''}
+              ${state.currentUser.role === 'profesor' && !hasVoted ? `<div class="text-sm font-medium text-slate-300 flex items-center gap-2"><i data-lucide="gavel" class="w-5 h-5 text-nodoOrange"></i> Modo Profesor: Tienes 1 voto de evaluación disponible.</div>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-2xl font-display font-bold text-nodoBlue dark:text-white transition-colors">Galería del Reto</h3>
+          <span class="text-sm font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 transition-colors">${c.submissions.length} Participantes</span>
+        </div>
+        ${gridHTML}
+      `;
+      return div;
+    }
+
+    async function voteChallenge(subId) {
+      if (!window.db) return;
+      const c = window.DB.activeChallenge;
+      const newSubs = c.submissions.map(s => s.id === subId ? { ...s, votes: [...s.votes, state.currentUser.id] } : s);
+      
+      try {
+        await window.updateDoc(window.getDocRef('challenges', c.id), { submissions: newSubs });
+        // NOTA: Se eliminó la entrega automática de estrellas. Ahora el Admin las entrega manualmente.
+        showToast('¡Voto registrado con éxito!');
+      } catch (err) { showToast('Error al registrar voto', 'error'); }
+    }
+  </script>
+
+  <script>
+    function createProfileView() {
+      const div = document.createElement('div');
+      div.className = "max-w-7xl mx-auto px-4 py-8 fade-in";
+
+      const targetUserId = state.viewingProfileId || state.currentUser.id;
+      const u = window.DB.users.find(x => x.id === targetUserId);
+      if (!u) { navigate('feed'); return div; }
+
+      const isOwn = u.id === state.currentUser.id;
+      const isAlumno = u.role === 'alumno';
+
+      let actionsHTML = isOwn 
+        ? `<button onclick="showToast('Edición de perfil próximamente', 'info')" class="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-nodoBlue dark:hover:border-nodoOrange hover:text-nodoBlue dark:hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">Editar Perfil</button>`
+        : `<button onclick="startDM('${u.id}')" class="bg-nodoBlue dark:bg-nodoOrange hover:bg-nodoBlue-light dark:hover:bg-nodoOrange-hover text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md flex items-center gap-2"><i data-lucide="message-circle" class="w-5 h-5"></i> Enviar Mensaje</button>`;
+
+      let infoHTML = isAlumno 
+        ? `<div class="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-3">
+            <span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-sm font-bold border border-slate-200 dark:border-slate-700">${u.carrera}</span>
+            <span class="bg-nodoBlue/5 dark:bg-nodoOrange/10 text-nodoBlue dark:text-nodoOrange px-3 py-1.5 rounded-lg text-sm font-bold border border-nodoBlue/10 dark:border-nodoOrange/20">Esp: ${u.specialty}</span>
+          </div>
+          <div class="mt-4 flex items-center justify-center md:justify-start gap-2 text-nodoOrange font-black text-lg">
+            <i data-lucide="star" class="w-6 h-6 fill-nodoOrange"></i> ${u.stars || 0} <span class="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Estrellas</span>
+          </div>`
+        : `<div class="mt-3 inline-block bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-100 dark:border-indigo-800 px-3 py-1.5 rounded-lg">
+            <span class="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5"><i data-lucide="briefcase" class="w-4 h-4"></i> Profesor / Evaluador</span>
+          </div>
+          <p class="text-slate-600 dark:text-slate-400 mt-2 font-medium">Área: <span class="font-bold text-nodoBlue dark:text-white">${u.specialty}</span></p>`;
+
+      let contentHTML = '';
+      if (isAlumno) {
+        const userProjects = window.DB.projects.filter(p => p.studentId === u.id);
+        contentHTML = `<div class="mt-12"><div class="flex items-center justify-between mb-8 border-b border-slate-200 dark:border-slate-700 pb-4">
+            <h3 class="text-2xl font-display font-bold text-nodoBlue dark:text-white">Carpetas de Trabajo</h3>
+            ${isOwn ? `<button onclick="openUploadModal()" class="text-sm font-bold text-nodoOrange hover:text-nodoOrange-hover flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i> Nuevo</button>` : ''}
+          </div><div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+
+        if (userProjects.length === 0) {
+          contentHTML += `<div class="col-span-full text-center py-12 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700"><p class="font-medium">No hay carpetas creadas aún.</p></div>`;
+        } else {
+          userProjects.forEach(p => {
+            const updatesCount = p.updates.length;
+            const cover = p.updates[updatesCount-1].img;
+            contentHTML += `
+              <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl flex flex-col cursor-pointer hover:shadow-lg transition-all group" onclick="openProjectModal('${p.id}')">
+                <div class="h-40 w-full rounded-xl overflow-hidden mb-3 relative bg-slate-100 dark:bg-slate-900">
+                  <img src="${cover}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=Error'">
+                  <div class="absolute inset-0 bg-nodoBlue/20 dark:bg-slate-900/40 group-hover:bg-transparent transition-colors"></div>
+                  <span class="absolute bottom-2 left-2 bg-nodoBlue dark:bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm"><i data-lucide="layers" class="w-3 h-3 inline mb-0.5"></i> ${updatesCount} iteraciones</span>
+                </div>
+                <div class="px-1">
+                  <div class="flex justify-between items-start mb-1">
+                    <h4 class="font-bold text-nodoBlue dark:text-white truncate pr-2">${p.title}</h4>
+                  </div>
+                  <span class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">${p.category}</span>
+                </div>
+              </div>
+            `;
+          });
+        }
+        contentHTML += `</div></div>`;
+      } else {
+        contentHTML = `
+          <div class="mt-12 text-center py-20 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
+            <div class="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i data-lucide="graduation-cap" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-2xl font-display font-bold text-nodoBlue dark:text-white mb-2">Panel Académico</h3>
+            <p class="text-slate-500 dark:text-slate-400 font-medium max-w-md mx-auto">Navega por la sección de Explorar para descubrir el talento de los alumnos y proporcionar retroalimentación valiosa.</p>
+            ${isOwn ? `<button onclick="navigate('feed')" class="mt-6 bg-nodoBlue dark:bg-nodoOrange text-white px-6 py-3 rounded-xl font-bold transition-colors">Ir a Explorar</button>`: ''}
+          </div>
+        `;
+      }
+
+      div.innerHTML = `
+        <div class="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 md:p-12 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
+          <div class="absolute top-0 left-0 w-full h-32 bg-slate-50 dark:bg-slate-900/50"></div>
+          <div class="relative flex flex-col md:flex-row items-center md:items-end gap-8 mt-4">
+            <div class="relative">
+              <img src="${u.avatar}" class="w-40 h-40 rounded-[2rem] object-cover border-4 border-white dark:border-slate-800 shadow-xl bg-white dark:bg-slate-700">
+              ${isAlumno ? `<div class="absolute -bottom-3 -right-3 bg-nodoOrange text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-800"><i data-lucide="medal" class="w-5 h-5"></i></div>` : ''}
+            </div>
+            <div class="flex-grow text-center md:text-left">
+              <h2 class="text-4xl font-display font-black text-nodoBlue dark:text-white tracking-tight">${u.name}</h2>
+              ${infoHTML}
+            </div>
+            <div class="flex-shrink-0 mt-6 md:mt-0">${actionsHTML}</div>
+          </div>
+        </div>
+        ${contentHTML}
+      `;
+      return div;
+    }
+
+    async function startDM(userId) {
+      if (!window.db) return;
+      const exists = window.DB.messages.find(m => (m.from === state.currentUser.id && m.to === userId) || (m.to === state.currentUser.id && m.from === userId));
+      
+      if (!exists) {
+        const newMsg = { id: 'm'+Date.now(), from: state.currentUser.id, to: userId, text: '¡Hola! He visto tu perfil en NODO.', date: 'Justo ahora' };
+        try { await window.setDoc(window.getDocRef('messages', newMsg.id), newMsg); } catch (err) {}
+      }
+      navigate('messages');
+    }
+
+    function createMessagesView() {
+      const div = document.createElement('div');
+      div.className = "max-w-5xl mx-auto px-4 py-8 fade-in h-[calc(100vh-80px)]";
+      
+      const myMsgs = window.DB.messages.filter(m => m.from === state.currentUser.id || m.to === state.currentUser.id);
+      const contacts = new Set();
+      myMsgs.forEach(m => { contacts.add(m.from); contacts.add(m.to); });
+      contacts.delete(state.currentUser.id);
+
+      let html = `
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-lg flex h-full transition-colors">
+          <div class="w-full md:w-1/3 bg-slate-50 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-700 flex flex-col">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <h3 class="text-xl font-display font-bold text-nodoBlue dark:text-white">Mensajes</h3>
+            </div>
+            <div class="flex-grow overflow-y-auto p-3 space-y-2">
+      `;
+
+      if (contacts.size === 0) {
+        html += `<p class="text-sm font-medium text-slate-400 dark:text-slate-500 text-center p-8">No tienes conversaciones activas.</p>`;
+      } else {
+        contacts.forEach(cId => {
+          const u = window.DB.users.find(x => x.id === cId) || { name: 'Desconocido', avatar: '' };
+          html += `
+            <div class="flex items-center gap-3 p-3 rounded-2xl cursor-pointer bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 hover:border-nodoBlue dark:hover:border-nodoOrange transition-colors group">
+              <img src="${u.avatar}" class="w-12 h-12 rounded-full border border-slate-100 dark:border-slate-700">
+              <div class="overflow-hidden">
+                <p class="text-sm font-bold text-nodoBlue dark:text-white truncate group-hover:text-nodoOrange transition-colors">${u.name}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">Toca para abrir chat</p>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      html += `
+            </div>
+          </div>
+          <div class="hidden md:flex w-2/3 flex-col bg-white dark:bg-slate-800">
+            <div class="flex-grow flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-12 text-center bg-slate-50/50 dark:bg-slate-900/20">
+              <div class="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                <i data-lucide="message-circle" class="w-10 h-10 text-slate-300 dark:text-slate-500"></i>
+              </div>
+              <h4 class="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">Tus Mensajes Directos</h4>
+              <p class="font-medium text-sm">Selecciona una conversación del panel lateral para interactuar.</p>
+            </div>
+            <div class="p-5 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <div class="flex gap-2 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <input type="text" placeholder="Escribe un mensaje..." disabled class="flex-grow bg-transparent px-4 py-2 text-sm focus:outline-none font-medium cursor-not-allowed text-slate-900 dark:text-white">
+                <button disabled class="bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 p-3 rounded-xl cursor-not-allowed"><i data-lucide="send" class="w-5 h-5"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      div.innerHTML = html;
+      return div;
+    }
+  </script>
+
+  <script>
+    function renderNav() {
+      const nav = document.getElementById('nav-links');
+      const mobileNav = document.getElementById('mobile-nav');
+      const userMenu = document.getElementById('user-menu');
+      const mainNav = document.getElementById('main-nav');
+      
+      const isDark = document.documentElement.classList.contains('dark');
+      const themeBtn = document.getElementById('theme-btn');
+      if(themeBtn) {
+        themeBtn.innerHTML = `<i data-lucide="${isDark ? 'sun' : 'moon'}" class="w-5 h-5"></i>`;
+      }
+      
+      if (!state.currentUser) {
+        mainNav.classList.add('hidden');
+        return;
+      }
+      mainNav.classList.remove('hidden');
+
+      const links = [
+        { id: 'feed', icon: 'compass', label: 'Explorar' },
+        { id: 'retos', icon: 'swords', label: 'Retos Semanales' },
+        { id: 'messages', icon: 'message-square', label: 'Mensajes' }
+      ];
+
+      // Añadir la vista exclusiva de Staff si el usuario es admin
+      if (state.currentUser && state.currentUser.role === 'admin') {
+        links.push({ id: 'staff', icon: 'shield-check', label: 'Staff NODO' });
+      }
+
+      const makeLinks = (isMobile) => links.map(l => {
+        const isActive = state.currentView === l.id && !state.viewingProfileId;
+        const activeClass = isActive 
+          ? 'bg-nodoBlue dark:bg-nodoOrange text-white shadow-md' 
+          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-nodoBlue dark:hover:text-white';
+        return `
+          <button onclick="navigate('${l.id}')" class="flex ${isMobile ? 'flex-col items-center justify-center flex-1 py-3' : 'items-center gap-2 px-4 py-2'} rounded-xl text-sm font-bold transition-all ${activeClass}">
+            <i data-lucide="${l.icon}" class="${isMobile ? 'w-6 h-6 mb-1' : 'w-4 h-4'} ${isActive ? '' : 'opacity-70'}"></i>
+            <span class="${isMobile ? 'text-[10px]' : ''}">${l.label}</span>
+          </button>
+        `;
+      }).join('');
+
+      nav.innerHTML = makeLinks(false);
+      mobileNav.innerHTML = makeLinks(true);
+
+      userMenu.innerHTML = `
+        <img src="${state.currentUser.avatar}" class="w-9 h-9 rounded-full object-cover shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="hidden sm:block text-left pr-1">
+          <p class="text-sm font-bold text-nodoBlue dark:text-white leading-tight">${state.currentUser.name.split(' ')[0]}</p>
+          <p class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 leading-tight">${state.currentUser.role}</p>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function navigate(view, profileId = null) {
+      state.currentView = view;
+      state.viewingProfileId = profileId;
+      renderView();
+    }
+
+    function renderView() {
+      const container = document.getElementById('app-container');
+      container.innerHTML = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      renderNav();
+
+      switch(state.currentView) {
+        case 'auth': container.appendChild(createAuthView()); break;
+        case 'feed': container.appendChild(createFeedView()); break;
+        case 'retos': container.appendChild(createRetosView()); break;
+        case 'profile': container.appendChild(createProfileView()); break;
+        case 'messages': container.appendChild(createMessagesView()); break;
+        case 'staff': container.appendChild(createStaffView()); break;
+      }
+      lucide.createIcons();
+    }
+
+    // --- VISTA DE ADMINISTRADOR (STAFF) ---
+    function createStaffView() {
+      const div = document.createElement('div');
+      div.className = "max-w-7xl mx-auto px-4 py-8 fade-in";
+      
+      if (state.currentUser.role !== 'admin') {
+        div.innerHTML = `<div class="text-center py-20"><p class="text-rose-500 font-bold">Acceso Denegado. Esta área es exclusiva del Staff.</p></div>`;
+        return div;
+      }
+
+      const c = window.DB.activeChallenge;
+      let subsHTML = '';
+      
+      if (c && c.submissions && c.submissions.length > 0) {
+        // Ordenar por cantidad de votos
+        const sortedSubs = [...c.submissions].sort((a, b) => b.votes.length - a.votes.length);
+        
+        subsHTML = sortedSubs.map(s => {
+          const author = window.DB.users.find(u => u.id === s.studentId) || { name: 'Desconocido', stars: 0 };
+          return `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 mb-3 gap-4">
+              <div class="flex items-center gap-4">
+                <img src="${s.img}" class="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700">
+                <div>
+                  <p class="font-bold text-nodoBlue dark:text-white">${author.name}</p>
+                  <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1"><i data-lucide="zap" class="w-3 h-3 inline text-nodoOrange"></i> ${s.votes.length} Votos de Profesores</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="awardStars('${author.id}', 10)" class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+                  +10 Estrellas
+                </button>
+                <button onclick="awardStars('${author.id}', 50)" class="bg-nodoOrange hover:bg-nodoOrange-hover text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-md">
+                  +50 (Ganador)
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        subsHTML = `<div class="text-center py-8 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700"><p class="text-sm font-medium text-slate-500 dark:text-slate-400">Aún no hay participaciones para evaluar.</p></div>`;
+      }
+
+      div.innerHTML = `
+        <div class="mb-8">
+          <span class="text-xs font-black uppercase tracking-widest text-nodoOrange mb-2 block">Módulo de Administración</span>
+          <h2 class="text-3xl font-display font-bold text-nodoBlue dark:text-white transition-colors">Staff NODO</h2>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- Gestor de Retos -->
+          <div class="lg:col-span-5 bg-white dark:bg-slate-800 p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-10 h-10 bg-nodoBlue dark:bg-slate-700 text-white rounded-xl flex items-center justify-center"><i data-lucide="refresh-cw" class="w-5 h-5"></i></div>
+              <h3 class="text-xl font-display font-bold text-nodoBlue dark:text-white">Lanzar Nuevo Reto</h3>
+            </div>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Título del Reto</label>
+                <input type="text" id="admin-challenge-title" placeholder="Ej. Escenario Cyberpunk 2077" class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-nodoOrange outline-none transition-all">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Disciplina Pincipal</label>
+                <select id="admin-challenge-cat" class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-nodoOrange outline-none transition-all">
+                  <option value="3D">3D</option>
+                  <option value="Animación">Animación</option>
+                  <option value="Dibujo">Dibujo</option>
+                  <option value="UI/UX">UI/UX</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">Descripción y Requisitos</label>
+                <textarea id="admin-challenge-desc" rows="4" placeholder="Describe los lineamientos del reto semanal..." class="w-full border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:border-nodoOrange outline-none resize-none transition-all"></textarea>
+              </div>
+              
+              <div class="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl">
+                <p class="text-xs font-medium text-amber-800 dark:text-amber-400"><i data-lucide="alert-triangle" class="w-4 h-4 inline mb-0.5"></i> <strong>Precaución:</strong> Publicar un nuevo reto borrará las participaciones del reto actual.</p>
+              </div>
+
+              <button onclick="publishNewChallenge()" class="w-full bg-nodoBlue hover:bg-nodoBlue-light dark:bg-nodoOrange dark:hover:bg-nodoOrange-hover text-white font-bold py-4 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2">
+                <i data-lucide="rocket" class="w-4 h-4"></i> Publicar y Reiniciar Reto
+              </button>
+            </div>
+          </div>
+
+          <!-- Gestor de Recompensas -->
+          <div class="lg:col-span-7 bg-white dark:bg-slate-800 p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-sm">
+             <div class="flex items-center justify-between mb-6">
+               <div class="flex items-center gap-3">
+                 <div class="w-10 h-10 bg-nodoOrange text-white rounded-xl flex items-center justify-center"><i data-lucide="star" class="w-5 h-5"></i></div>
+                 <h3 class="text-xl font-display font-bold text-nodoBlue dark:text-white">Liberar Estrellas</h3>
+               </div>
+               <span class="text-sm font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 dark:text-slate-300 px-3 py-1 rounded-full">Reto Activo</span>
+             </div>
+             
+             <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium">Revisa las participaciones ordenadas por votos y otorga estrellas a los alumnos destacados manualmente.</p>
+             
+             <div class="space-y-2">
+               ${subsHTML}
+             </div>
+          </div>
+        </div>
+      `;
+      return div;
+    }
+
+    window.publishNewChallenge = async function() {
+      const title = document.getElementById('admin-challenge-title').value.trim();
+      const cat = document.getElementById('admin-challenge-cat').value;
+      const desc = document.getElementById('admin-challenge-desc').value.trim();
+
+      if (!title || !desc) return showToast('Completa todos los campos para publicar.', 'error');
+      if (!window.db) return showToast('Sin conexión a la nube.', 'error');
+
+      // Mantenemos el mismo ID para sobrescribir el activo (Solo 1 reto activo a la vez)
+      const cId = window.DB.activeChallenge ? window.DB.activeChallenge.id : 'c1';
+
+      const newChallenge = {
+        id: cId,
+        title: title,
+        category: cat,
+        desc: desc,
+        submissions: [] // Resetea el tablero limpio
+      };
+
+      try {
+        await window.setDoc(window.getDocRef('challenges', cId), newChallenge);
+        showToast('¡Nuevo reto publicado con éxito!');
+        document.getElementById('admin-challenge-title').value = '';
+        document.getElementById('admin-challenge-desc').value = '';
+      } catch(e) {
+        showToast('Hubo un error al actualizar el reto.', 'error');
+      }
+    };
+
+    window.awardStars = async function(userId, amount) {
+      if (!window.db) return;
+      const user = window.DB.users.find(u => u.id === userId);
+      
+      if (user) {
+        try {
+          const currentStars = user.stars || 0;
+          await window.updateDoc(window.getDocRef('users', userId), { stars: currentStars + amount });
+          showToast(`¡Se han añadido +${amount} estrellas a ${user.name}!`);
+        } catch(e) {
+          showToast('Error al actualizar las estrellas.', 'error');
+        }
+      }
+    };
+
+    window.onload = () => { renderView(); };
+  </script>
+</body>
+</html>
